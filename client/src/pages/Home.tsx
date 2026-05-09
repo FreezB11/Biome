@@ -91,14 +91,14 @@ export default function Home() {
             >
               <Link
                 href="/search"
-                className="inline-flex items-center justify-center bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white px-8 py-6 text-lg font-semibold rounded-lg"
+                className="inline-flex items-center justify-center w-full sm:w-[220px] h-14 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white px-8 text-lg font-semibold rounded-lg"
               >
                 Start Searching
                 <ArrowRight className="ml-2 w-5 h-5" />
               </Link>
               <Button
                 variant="outline"
-                className="px-8 py-6 text-lg font-semibold border-2 border-amber-200 hover:bg-amber-50"
+                className="w-full sm:w-[220px] h-14 px-8 text-lg font-semibold border-2 border-amber-200 hover:bg-amber-50 rounded-lg"
               >
                 Watch Demo
               </Button>
