@@ -121,6 +121,57 @@ export interface SearchResult {
   processingTime: number;
 }
 
+export type BackendMoney = {
+  currency: 'INR';
+  amount: number;
+};
+
+export type BackendNormalizedItem = {
+  id: string;
+  name: string;
+  provider: string;
+  domain: DomainType;
+  itemUrl: string;
+  imageUrl?: string;
+  rating?: number;
+  reviewsCount?: number;
+  listPrice?: BackendMoney;
+  finalPrice: BackendMoney;
+  deliveryEtaMinutes?: number;
+  offersApplied?: Array<{
+    type: 'coupon' | 'bank' | 'wallet' | 'platform' | 'other';
+    label: string;
+    value?: BackendMoney;
+    code?: string;
+  }>;
+};
+
+export type BackendSearchResult = {
+  searchId: string;
+  query: string;
+  intent: {
+    domain: DomainType;
+    category?: string;
+    budget?: BackendMoney;
+    features?: string[];
+    keywords?: string[];
+  };
+  items: BackendNormalizedItem[];
+  ai: {
+    bestOverall?: BackendNormalizedItem;
+    bestValue?: BackendNormalizedItem;
+    recommendations: Array<{
+      item: BackendNormalizedItem;
+      reason: string;
+      confidence: number;
+    }>;
+    comparisonInsights?: string[];
+    reviewSummary?: string;
+  };
+  generatedAt: string;
+  cache: { hit: boolean; key: string };
+};
+
 /* User Types */
 export interface User {
   id: string;
