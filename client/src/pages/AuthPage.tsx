@@ -1,26 +1,110 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Mail, Lock, User, ArrowRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Mail, Phone, ArrowRight, RefreshCw } from 'lucide-react';
 import { Link } from 'wouter';
+import { Button } from '@/components/ui/button';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 
 export default function AuthPage() {
-  const [isSignUp, setIsSignUp] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-  });
+  const [channel, setChannel] = useState<'email' | 'phone'>('email');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [requestId, setRequestId] = useState<string | null>(null);
+  const [otp, setOtp] = useState('');
+  const [devOtp, setDevOtp] = useState<string | null>(null);
+  const [status, setStatus] = useState<{ type: 'ok' | 'err'; message: string } | null>(null);
+  const [isRequesting, setIsRequesting] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+  const destination = channel === 'email' ? email : phone;
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const err = url.searchParams.get('error');
+    if (err === 'google_not_configured') {
+      setStatus({ type: 'err', message: 'Google sign-in is not configured yet' });
+    }
+  }, []);
+
+  const requestOtp = async () => {
+    setStatus(null);
+    setDevOtp(null);
+    setIsRequesting(true);
+    try {
+      const resp = await fetch('/auth/otp/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(
+          channel === 'email'
+            ? { channel, email: email.trim() }
+            : { channel, phone: phone.trim() }
+        ),
+      });
+      const json = (await resp.json()) as { requestId?: string; devOtp?: string; error?: string };
+      if (!resp.ok || !json.requestId) {
+        setStatus({ type: 'err', message: json.error || 'Failed to send code' });
+        return;
+      }
+      setRequestId(json.requestId);
+      setDevOtp(json.devOtp || null);
+      setStatus({ type: 'ok', message: 'OTP sent' });
+    } catch {
+      setStatus({ type: 'err', message: 'Failed to send code' });
+    } finally {
+      setIsRequesting(false);
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log('Form submitted:', formData);
+  const resendOtp = async () => {
+    if (!requestId) return;
+    setStatus(null);
+    setDevOtp(null);
+    setIsRequesting(true);
+    try {
+      const resp = await fetch('/auth/otp/resend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ requestId }),
+      });
+      const json = (await resp.json()) as { devOtp?: string; error?: string };
+      if (!resp.ok) {
+        setStatus({ type: 'err', message: json.error || 'Failed to resend code' });
+        return;
+      }
+      setDevOtp(json.devOtp || null);
+      setStatus({ type: 'ok', message: 'OTP resent' });
+    } catch {
+      setStatus({ type: 'err', message: 'Failed to resend code' });
+    } finally {
+      setIsRequesting(false);
+    }
+  };
+
+  const verifyOtp = async () => {
+    if (!requestId) return;
+    setStatus(null);
+    setIsVerifying(true);
+    try {
+      const resp = await fetch('/auth/otp/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ requestId, otp }),
+      });
+      const json = (await resp.json()) as { error?: string };
+      if (!resp.ok) {
+        setStatus({ type: 'err', message: json.error || 'Invalid OTP' });
+        return;
+      }
+      setStatus({ type: 'ok', message: 'Signed in' });
+      window.location.href = '/profile';
+    } catch {
+      setStatus({ type: 'err', message: 'OTP verification failed' });
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
   return (
@@ -57,175 +141,168 @@ export default function AuthPage() {
         <div className="bg-white rounded-2xl shadow-xl border border-amber-100 p-8">
           {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold mb-2">
-              {isSignUp ? 'Create Account' : 'Welcome Back'}
-            </h1>
+            <h1 className="text-3xl font-bold mb-2">Sign in to Deepenk</h1>
             <p className="text-muted-foreground">
-              {isSignUp
-                ? 'Join thousands saving with Biome'
-                : 'Sign in to your account'}
+              Continue with Google or use OTP via email/phone
             </p>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4 mb-6">
-            {/* Name Field (Sign Up Only) */}
-            {isSignUp && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-              >
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Full Name
-                </label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                  <input
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    placeholder="John Doe"
-                    className="w-full pl-10 pr-4 py-3 rounded-lg border border-amber-100 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition-all"
-                  />
-                </div>
-              </motion.div>
-            )}
-
-            {/* Email Field */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
+          {status && (
+            <div
+              className={`text-sm rounded-lg px-3 py-2 mb-4 ${
+                status.type === 'ok' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+              }`}
             >
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Email Address
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  placeholder="you@example.com"
-                  className="w-full pl-10 pr-4 py-3 rounded-lg border border-amber-100 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition-all"
-                />
-              </div>
-            </motion.div>
-
-            {/* Password Field */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-            >
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Password
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <input
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  placeholder="••••••••"
-                  className="w-full pl-10 pr-4 py-3 rounded-lg border border-amber-100 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition-all"
-                />
-              </div>
-            </motion.div>
-
-            {/* Confirm Password (Sign Up Only) */}
-            {isSignUp && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-              >
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Confirm Password
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                  <input
-                    type="password"
-                    name="confirmPassword"
-                    value={formData.confirmPassword}
-                    onChange={handleInputChange}
-                    placeholder="••••••••"
-                    className="w-full pl-10 pr-4 py-3 rounded-lg border border-amber-100 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition-all"
-                  />
-                </div>
-              </motion.div>
-            )}
-
-            {/* Remember Me / Forgot Password */}
-            {!isSignUp && (
-              <div className="flex items-center justify-between text-sm">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="w-4 h-4 rounded border-amber-300 text-amber-600"
-                  />
-                  <span className="text-muted-foreground">Remember me</span>
-                </label>
-                <a href="#" className="text-amber-600 hover:text-amber-700 font-medium">
-                  Forgot password?
-                </a>
-              </div>
-            )}
-
-            {/* Submit Button */}
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              type="submit"
-              className="w-full mt-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-2"
-            >
-              {isSignUp ? 'Create Account' : 'Sign In'}
-              <ArrowRight className="w-5 h-5" />
-            </motion.button>
-          </form>
-
-          {/* Social Auth */}
-          <div className="mb-6">
-            <div className="relative mb-6">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-amber-100" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-muted-foreground">Or continue with</span>
-              </div>
+              {status.message}
             </div>
+          )}
 
-            <div className="grid grid-cols-3 gap-3">
-              {['Google', 'GitHub', 'Apple'].map((provider) => (
-                <button
-                  key={provider}
-                  type="button"
-                  className="py-2 px-4 border border-amber-100 rounded-lg hover:bg-amber-50 transition-colors text-sm font-medium"
-                >
-                  {provider === 'Google' && '🔵'}
-                  {provider === 'GitHub' && '⚫'}
-                  {provider === 'Apple' && '🍎'}
-                </button>
-              ))}
+          <div className="mb-6">
+            <Button
+              type="button"
+              className="w-full bg-white text-foreground border border-amber-100 hover:bg-amber-50"
+              onClick={() => (window.location.href = '/auth/google')}
+            >
+              <span className="mr-2">🔵</span>
+              Continue with Google
+            </Button>
+          </div>
+
+          <div className="relative mb-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-amber-100" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white text-muted-foreground">Or use OTP</span>
             </div>
           </div>
 
-          {/* Toggle Auth Mode */}
-          <div className="text-center text-sm">
-            <span className="text-muted-foreground">
-              {isSignUp ? 'Already have an account? ' : "Don't have an account? "}
-            </span>
-            <button
-              onClick={() => setIsSignUp(!isSignUp)}
-              className="text-amber-600 hover:text-amber-700 font-semibold"
+          <div className="flex gap-2 mb-4">
+            <Button
+              type="button"
+              variant={channel === 'email' ? 'default' : 'outline'}
+              className="flex-1"
+              onClick={() => {
+                setChannel('email');
+                setRequestId(null);
+                setOtp('');
+                setStatus(null);
+                setDevOtp(null);
+              }}
             >
-              {isSignUp ? 'Sign In' : 'Sign Up'}
-            </button>
+              <Mail className="w-4 h-4 mr-2" />
+              Email
+            </Button>
+            <Button
+              type="button"
+              variant={channel === 'phone' ? 'default' : 'outline'}
+              className="flex-1"
+              onClick={() => {
+                setChannel('phone');
+                setRequestId(null);
+                setOtp('');
+                setStatus(null);
+                setDevOtp(null);
+              }}
+            >
+              <Phone className="w-4 h-4 mr-2" />
+              Phone
+            </Button>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                {channel === 'email' ? 'Email Address' : 'Phone Number'}
+              </label>
+              <div className="relative">
+                {channel === 'email' ? (
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                ) : (
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                )}
+                <input
+                  type={channel === 'email' ? 'email' : 'tel'}
+                  value={destination}
+                  onChange={(e) => (channel === 'email' ? setEmail(e.target.value) : setPhone(e.target.value))}
+                  placeholder={channel === 'email' ? 'you@example.com' : '+91XXXXXXXXXX'}
+                  className="w-full pl-10 pr-4 py-3 rounded-lg border border-amber-100 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition-all"
+                />
+              </div>
+            </div>
+
+            {!requestId && (
+              <Button
+                type="button"
+                className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold"
+                disabled={!destination.trim() || isRequesting}
+                onClick={requestOtp}
+              >
+                Send code
+                <ArrowRight className="w-5 h-5 ml-2" />
+              </Button>
+            )}
+
+            {requestId && (
+              <div className="space-y-4">
+                <div className="text-xs text-muted-foreground">
+                  Code sent to {channel === 'email' ? email : phone}
+                </div>
+
+                {devOtp && (
+                  <div className="text-xs rounded-lg px-3 py-2 bg-amber-50 text-amber-800 border border-amber-100">
+                    Dev OTP: {devOtp}
+                  </div>
+                )}
+
+                <div className="flex justify-center">
+                  <InputOTP maxLength={6} value={otp} onChange={setOtp}>
+                    <InputOTPGroup>
+                      <InputOTPSlot index={0} />
+                      <InputOTPSlot index={1} />
+                      <InputOTPSlot index={2} />
+                      <InputOTPSlot index={3} />
+                      <InputOTPSlot index={4} />
+                      <InputOTPSlot index={5} />
+                    </InputOTPGroup>
+                  </InputOTP>
+                </div>
+
+                <Button
+                  type="button"
+                  className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold"
+                  disabled={otp.trim().length < 4 || isVerifying}
+                  onClick={verifyOtp}
+                >
+                  Verify & Sign in
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  disabled={isRequesting}
+                  onClick={resendOtp}
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Resend code
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full"
+                  onClick={() => {
+                    setRequestId(null);
+                    setOtp('');
+                    setDevOtp(null);
+                    setStatus(null);
+                  }}
+                >
+                  Change {channel === 'email' ? 'email' : 'phone'}
+                </Button>
+              </div>
+            )}
           </div>
         </div>
 
