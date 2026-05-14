@@ -6,45 +6,41 @@ import Header from '@/components/shared/Header';
 import Footer from '@/components/shared/Footer';
 import AISearchInput from '@/components/ai/AISearchInput';
 import AIRecommendationCard from '@/components/ai/AIRecommendationCard';
+import apiClient from '@/services/api';
+import type { BackendSearchResult } from '@/types';
 
 export default function SearchPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showFilters, setShowFilters] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<BackendSearchResult | null>(null);
 
-  const handleSearch = (query: string) => {
+  const handleSearch = async (query: string) => {
     setSearchQuery(query);
+    setIsLoading(true);
+    setError(null);
+    try {
+      const resp = await apiClient.post<BackendSearchResult>('/search', { query });
+      setResult(resp.data);
+    } catch (e) {
+      setResult(null);
+      setError('Search failed. Try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const mockResults = [
-    {
-      id: '1',
-      title: 'Gaming Laptop',
-      description: 'RTX 4060 • 16GB RAM • 512GB SSD • FHD Display',
-      savings: 5200,
-      confidence: 0.95,
-      platform: 'Flipkart',
-      icon: '💻',
+  const recommendations = result?.ai.recommendations ?? [];
+  const totalSavings = recommendations.reduce(
+    (sum: number, r: BackendSearchResult['ai']['recommendations'][number]) => {
+    const list = r.item.listPrice?.amount;
+    const final = r.item.finalPrice.amount;
+    return sum + (list && list > final ? list - final : 0);
     },
-    {
-      id: '2',
-      title: 'Wireless Earbuds',
-      description: 'Active Noise Cancellation • 48hr Battery • Premium Sound',
-      savings: 1800,
-      confidence: 0.88,
-      platform: 'Amazon',
-      icon: '🎧',
-    },
-    {
-      id: '3',
-      title: 'Smart Watch',
-      description: 'AMOLED Display • 7 Day Battery • Health Tracking',
-      savings: 2500,
-      confidence: 0.92,
-      platform: 'Croma',
-      icon: '⌚',
-    },
-  ];
+    0
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white via-amber-50/30 to-white">
@@ -133,6 +129,12 @@ export default function SearchPage() {
               </div>
 
               {/* Results Grid */}
+              {isLoading && (
+                <div className="py-16 text-center text-muted-foreground">Loading results...</div>
+              )}
+
+              {error && <div className="py-8 text-center text-red-600">{error}</div>}
+
               <div
                 className={`grid gap-6 ${
                   viewMode === 'grid'
@@ -140,35 +142,44 @@ export default function SearchPage() {
                     : 'grid-cols-1'
                 }`}
               >
-                {mockResults.map((result, idx) => (
-                  <AIRecommendationCard
-                    key={result.id}
-                    title={result.title}
-                    description={result.description}
-                    savings={result.savings}
-                    confidence={result.confidence}
-                    platform={result.platform}
-                    icon={result.icon}
-                    delay={idx * 0.1}
-                  />
-                ))}
+                {!isLoading &&
+                  !error &&
+                  recommendations.map((rec, idx) => (
+                    <AIRecommendationCard
+                      key={rec.item.id}
+                      title={rec.item.name}
+                      description={rec.reason}
+                      savings={
+                        rec.item.listPrice?.amount && rec.item.listPrice.amount > rec.item.finalPrice.amount
+                          ? rec.item.listPrice.amount - rec.item.finalPrice.amount
+                          : 0
+                      }
+                      confidence={rec.confidence}
+                      platform={rec.item.provider}
+                      icon="✨"
+                      delay={idx * 0.1}
+                      onViewDetails={() => window.open(rec.item.itemUrl, '_blank')}
+                    />
+                  ))}
               </div>
 
               {/* Total Savings */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="mt-12 p-8 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 text-center"
-              >
-                <p className="text-muted-foreground mb-2">Total Savings Potential</p>
-                <p className="text-5xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
-                  ₹{mockResults.reduce((sum, r) => sum + r.savings, 0).toLocaleString()}
-                </p>
-                <p className="text-muted-foreground mt-2">
-                  across all recommendations
-                </p>
-              </motion.div>
+              {!isLoading && !error && result && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="mt-12 p-8 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 text-center"
+                >
+                  <p className="text-muted-foreground mb-2">Total Savings Potential</p>
+                  <p className="text-5xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
+                    ₹{totalSavings.toLocaleString()}
+                  </p>
+                  <p className="text-muted-foreground mt-2">
+                    cache: {result.cache.hit ? 'HIT' : 'MISS'}
+                  </p>
+                </motion.div>
+              )}
             </motion.div>
           )}
 
