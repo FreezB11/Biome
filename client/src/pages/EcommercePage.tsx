@@ -1,46 +1,52 @@
 import { motion } from 'framer-motion';
-import { Star, ShoppingCart, TrendingUp } from 'lucide-react';
+import { Star, ShoppingCart, TrendingUp, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Header from '@/components/shared/Header';
 import Footer from '@/components/shared/Footer';
 import AISearchInput from '@/components/ai/AISearchInput';
+import apiClient, { ecommerceAPI } from '@/services/api';
+import type { BackendSearchResult } from '@/types';
+import { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 export default function EcommercePage() {
-  const mockProducts = [
-    {
-      id: '1',
-      name: 'Gaming Laptop',
-      price: 64999,
-      originalPrice: 89999,
-      rating: 4.8,
-      reviews: 2341,
-      platform: 'Flipkart',
-      image: '💻',
-      discount: 28,
-    },
-    {
-      id: '2',
-      name: 'Wireless Earbuds',
-      price: 2999,
-      originalPrice: 4999,
-      rating: 4.6,
-      reviews: 1203,
-      platform: 'Amazon',
-      image: '🎧',
-      discount: 40,
-    },
-    {
-      id: '3',
-      name: 'Smart Watch',
-      price: 9999,
-      originalPrice: 14999,
-      rating: 4.5,
-      reviews: 892,
-      platform: 'Croma',
-      image: '⌚',
-      discount: 33,
-    },
-  ];
+  const [isLoading, setIsLoading] = useState(false);
+  const [result, setResult] = useState<BackendSearchResult | null>(null);
+  const [compareOpen, setCompareOpen] = useState(false);
+  const [compare, setCompare] = useState<{
+    productId: string;
+    comparisons: Array<{ provider: string; price: number; itemUrl: string }>;
+    best: { provider: string; price: number; itemUrl: string } | null;
+  } | null>(null);
+
+  const runSearch = async (q: string) => {
+    const query = q.trim();
+    if (!query) return;
+    setIsLoading(true);
+    try {
+      const resp = await apiClient.post<BackendSearchResult>('/search/shopping', { query });
+      setResult(resp.data);
+    } catch {
+      setResult(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const openComparison = async (productId: string) => {
+    try {
+      const data = await ecommerceAPI.getPriceComparison(productId);
+      setCompare({
+        productId: data.productId,
+        comparisons: data.comparisons,
+        best: data.best ?? null,
+      });
+      setCompareOpen(true);
+    } catch {
+      setCompare(null);
+      setCompareOpen(true);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white via-amber-50/30 to-white">
@@ -67,7 +73,7 @@ export default function EcommercePage() {
             <div className="max-w-xl">
               <AISearchInput
                 placeholder="Search for products..."
-                onSearch={(q) => console.log('Search:', q)}
+                onSearch={runSearch}
               />
             </div>
           </motion.div>
@@ -115,9 +121,12 @@ export default function EcommercePage() {
       {/* Products */}
       <section className="py-12">
         <div className="container">
-          <h2 className="text-3xl font-bold mb-8">Trending Products</h2>
+          <h2 className="text-3xl font-bold mb-2">{result ? 'Search Results' : 'Trending Products'}</h2>
+          <p className="text-sm text-muted-foreground mb-8">
+            {isLoading ? 'Searching…' : 'Compare prices across platforms and open checkout links.'}
+          </p>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {mockProducts.map((product, idx) => (
+            {(result?.items ?? []).map((product, idx) => (
               <motion.div
                 key={product.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -127,12 +136,7 @@ export default function EcommercePage() {
                 className="rounded-xl border border-amber-100 overflow-hidden hover:shadow-lg transition-all duration-300 bg-white"
               >
                 <div className="bg-gradient-to-br from-amber-50 to-orange-50 p-8 text-center relative">
-                  <div className="text-6xl mb-4">{product.image}</div>
-                  {product.discount > 0 && (
-                    <div className="absolute top-4 right-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold">
-                      -{product.discount}%
-                    </div>
-                  )}
+                  <div className="text-6xl mb-4">🛒</div>
                 </div>
 
                 <div className="p-6">
@@ -148,27 +152,38 @@ export default function EcommercePage() {
                       ))}
                     </div>
                     <span className="text-sm text-muted-foreground">
-                      {product.rating} ({product.reviews})
+                      {product.rating ?? 0} ({product.reviewsCount ?? 0})
                     </span>
                   </div>
 
                   <div className="mb-4">
                     <p className="text-2xl font-bold text-orange-600">
-                      ₹{product.price.toLocaleString()}
+                      ₹{product.finalPrice.amount.toLocaleString()}
                     </p>
-                    <p className="text-sm text-muted-foreground line-through">
-                      ₹{product.originalPrice.toLocaleString()}
-                    </p>
+                    {product.listPrice?.amount && product.listPrice.amount > product.finalPrice.amount && (
+                      <p className="text-sm text-muted-foreground line-through">
+                        ₹{product.listPrice.amount.toLocaleString()}
+                      </p>
+                    )}
                   </div>
 
                   <p className="text-xs text-muted-foreground mb-4">
-                    Available on {product.platform}
+                    Available on {product.provider}
                   </p>
 
-                  <Button className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white">
-                    <ShoppingCart className="w-4 h-4 mr-2" />
-                    View Deal
-                  </Button>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Button
+                      className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
+                      onClick={() => window.open(product.itemUrl, '_blank')}
+                    >
+                      <ShoppingCart className="w-4 h-4 mr-2" />
+                      Checkout
+                    </Button>
+                    <Button variant="outline" onClick={() => openComparison(product.id)}>
+                      <BarChart3 className="w-4 h-4 mr-2" />
+                      Compare
+                    </Button>
+                  </div>
                 </div>
               </motion.div>
             ))}
@@ -177,6 +192,35 @@ export default function EcommercePage() {
       </section>
 
       <Footer />
+
+      <Dialog open={compareOpen} onOpenChange={setCompareOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Price comparison</DialogTitle>
+          </DialogHeader>
+          {!compare && <div className="text-sm text-muted-foreground">Could not load comparison.</div>}
+          {compare && (
+            <div className="space-y-3">
+              {compare.comparisons.map((c) => (
+                <div
+                  key={c.provider}
+                  className={`flex items-center justify-between rounded-lg border px-4 py-3 ${
+                    compare.best?.provider === c.provider ? 'border-amber-300 bg-amber-50' : 'border-amber-100'
+                  }`}
+                >
+                  <div className="font-medium">{c.provider}</div>
+                  <div className="flex items-center gap-3">
+                    <div className="font-semibold">₹{Number(c.price).toLocaleString()}</div>
+                    <Button size="sm" variant="outline" onClick={() => window.open(c.itemUrl, '_blank')}>
+                      Open
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
