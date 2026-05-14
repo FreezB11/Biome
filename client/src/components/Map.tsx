@@ -76,7 +76,7 @@
 
 /// <reference types="@types/google.maps" />
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { cn } from "@/lib/utils";
 
@@ -86,24 +86,32 @@ declare global {
   }
 }
 
-const API_KEY = import.meta.env.VITE_FRONTEND_FORGE_API_KEY;
+const FORGE_API_KEY = import.meta.env.VITE_FRONTEND_FORGE_API_KEY;
 const FORGE_BASE_URL =
-  import.meta.env.VITE_FRONTEND_FORGE_API_URL ||
-  "https://forge.butterfly-effect.dev";
+  import.meta.env.VITE_FRONTEND_FORGE_API_URL || "https://forge.butterfly-effect.dev";
 const MAPS_PROXY_URL = `${FORGE_BASE_URL}/v1/maps/proxy`;
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
 function loadMapScript() {
-  return new Promise(resolve => {
+  return new Promise<boolean>((resolve) => {
+    const apiKey = FORGE_API_KEY || GOOGLE_MAPS_API_KEY;
+    if (!apiKey) {
+      resolve(false);
+      return;
+    }
+
     const script = document.createElement("script");
-    script.src = `${MAPS_PROXY_URL}/maps/api/js?key=${API_KEY}&v=weekly&libraries=marker,places,geocoding,geometry`;
+    const srcBase = FORGE_API_KEY ? `${MAPS_PROXY_URL}/maps/api/js` : "https://maps.googleapis.com/maps/api/js";
+    script.src = `${srcBase}?key=${apiKey}&v=weekly&libraries=marker,places,geocoding,geometry,routes`;
     script.async = true;
     script.crossOrigin = "anonymous";
     script.onload = () => {
-      resolve(null);
+      resolve(true);
       script.remove(); // Clean up immediately
     };
     script.onerror = () => {
       console.error("Failed to load Google Maps script");
+      resolve(false);
     };
     document.head.appendChild(script);
   });
@@ -124,9 +132,14 @@ export function MapView({
 }: MapViewProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<google.maps.Map | null>(null);
+  const [isReady, setIsReady] = useState(true);
 
   const init = usePersistFn(async () => {
-    await loadMapScript();
+    const ok = await loadMapScript();
+    if (!ok) {
+      setIsReady(false);
+      return;
+    }
     if (!mapContainer.current) {
       console.error("Map container not found");
       return;
@@ -150,6 +163,18 @@ export function MapView({
   }, [init]);
 
   return (
-    <div ref={mapContainer} className={cn("w-full h-[500px]", className)} />
+    <div
+      ref={mapContainer}
+      className={cn(
+        isReady ? "w-full h-[500px]" : "w-full h-[500px] flex items-center justify-center rounded-xl bg-muted/30",
+        className
+      )}
+    >
+      {!isReady && (
+        <div className="text-sm text-muted-foreground px-6 text-center">
+          Google Maps is not configured. Set VITE_GOOGLE_MAPS_API_KEY (or VITE_FRONTEND_FORGE_API_KEY).
+        </div>
+      )}
+    </div>
   );
 }
