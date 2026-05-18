@@ -91,6 +91,7 @@ const FORGE_BASE_URL =
   import.meta.env.VITE_FRONTEND_FORGE_API_URL || "https://forge.butterfly-effect.dev";
 const MAPS_PROXY_URL = `${FORGE_BASE_URL}/v1/maps/proxy`;
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+const GOOGLE_MAP_ID = import.meta.env.VITE_GOOGLE_MAP_ID;
 
 function loadMapScript() {
   return new Promise<boolean>((resolve) => {
@@ -151,7 +152,7 @@ export function MapView({
       fullscreenControl: true,
       zoomControl: true,
       streetViewControl: true,
-      mapId: "DEMO_MAP_ID",
+      mapId: GOOGLE_MAP_ID || "DEMO_MAP_ID",
     });
     if (onMapReady) {
       onMapReady(map.current);
