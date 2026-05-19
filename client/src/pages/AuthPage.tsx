@@ -108,34 +108,36 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-orange-50 flex items-center justify-center p-4">
-      {/* Background Elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
-          className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-amber-200 to-orange-200 rounded-full opacity-20 blur-3xl"
-        />
-        <motion.div
-          animate={{ rotate: -360 }}
-          transition={{ duration: 25, repeat: Infinity, ease: 'linear' }}
-          className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-yellow-200 to-amber-200 rounded-full opacity-20 blur-3xl"
-        />
-      </div>
+    <div className="mobile-stage">
+      <div className="fit-shell">
+        <div className="phone-screen">
+          <div className="screen auth-screen">
+            <div className="relative min-h-[100dvh] flex items-center justify-center py-6">
+              <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
+                  className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-amber-200 to-orange-200 rounded-full opacity-20 blur-3xl"
+                />
+                <motion.div
+                  animate={{ rotate: -360 }}
+                  transition={{ duration: 25, repeat: Infinity, ease: 'linear' }}
+                  className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-yellow-200 to-amber-200 rounded-full opacity-20 blur-3xl"
+                />
+              </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8 }}
-        className="w-full max-w-md relative z-10"
-      >
-        {/* Logo */}
-        <Link href="/" className="flex items-center justify-center gap-2 mb-8">
-          <div className="text-3xl">⚡</div>
-          <span className="font-bold text-2xl bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
-            Biome
-          </span>
-        </Link>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8 }}
+                className="w-full max-w-md relative z-10"
+              >
+                <Link href="/" className="flex items-center justify-center gap-2 mb-8">
+                  <div className="text-3xl">⚡</div>
+                  <span className="font-bold text-2xl bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
+                    Algorithec
+                  </span>
+                </Link>
 
         {/* Card */}
         <div className="bg-white rounded-2xl shadow-xl border border-amber-100 p-8">
@@ -324,7 +326,11 @@ export default function AuthPage() {
             Privacy Policy
           </a>
         </p>
-      </motion.div>
+              </motion.div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
