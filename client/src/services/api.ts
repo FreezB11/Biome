@@ -240,6 +240,75 @@ export const paymentsAPI = {
   },
 };
 
+export const ordersAPI = {
+  createOrder: async (input: {
+    domain: 'ecommerce' | 'food' | 'rides' | 'travel' | 'hospitality';
+    provider: string;
+    title: string;
+    itemUrl: string;
+    amount: { currency: 'INR'; amount: number };
+    metadata?: Record<string, unknown>;
+    paymentIntentId?: string;
+  }) => {
+    try {
+      const response = await apiClient.post('/orders', input);
+      return response.data;
+    } catch (error) {
+      console.error('Create order failed:', error);
+      throw error;
+    }
+  },
+
+  listOrders: async (limit?: number) => {
+    try {
+      const response = await apiClient.get('/orders', { params: { limit } });
+      return response.data;
+    } catch (error) {
+      console.error('List orders failed:', error);
+      throw error;
+    }
+  },
+
+  getOrder: async (orderId: string) => {
+    try {
+      const response = await apiClient.get(`/orders/${orderId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Get order failed:', error);
+      throw error;
+    }
+  },
+
+  cancelOrder: async (orderId: string) => {
+    try {
+      const response = await apiClient.post(`/orders/${orderId}/cancel`);
+      return response.data;
+    } catch (error) {
+      console.error('Cancel order failed:', error);
+      throw error;
+    }
+  },
+
+  createPaymentIntent: async (
+    orderId: string,
+    input?: {
+      customerPhone?: string;
+      customerEmail?: string;
+      customerName?: string;
+      returnUrl?: string;
+      notifyUrl?: string;
+    }
+  ) => {
+    try {
+      const response = await apiClient.post(`/orders/${orderId}/payment-intent`, input ?? {});
+      return response.data;
+    } catch (error) {
+      console.error('Create order payment intent failed:', error);
+      throw error;
+    }
+  },
+};
+
 /**
  * Travel API Services
  */
