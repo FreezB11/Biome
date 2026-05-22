@@ -24,7 +24,20 @@ function getRapidApiProviderConfig(provider: string) {
   const key = provider.toUpperCase().replace(/[^A-Z0-9]+/g, "_");
   const host = process.env[`RAPIDAPI_${key}_HOST`] || "";
   const url = process.env[`RAPIDAPI_${key}_SEARCH_URL`] || "";
-  return { host, url };
+  const detailsUrl = process.env[`RAPIDAPI_${key}_DETAILS_URL`] || "";
+  return { host, url, detailsUrl };
+}
+
+async function fetchJsonWithTimeout(url: string, headers: Record<string, string>, timeoutMs = 8000): Promise<unknown> {
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const r = await fetch(url, { headers, signal: controller.signal });
+    if (!r.ok) throw new Error(`HTTP_${r.status}`);
+    return (await r.json()) as unknown;
+  } finally {
+    clearTimeout(t);
+  }
 }
 
 function pickString(v: unknown, keys: string[]): string | undefined {
@@ -68,23 +81,55 @@ async function rapidApiSearchEcommerce(input: { provider: string; query: string 
   if (u.toString().includes("{query}")) {
     const replaced = cfg.url.replaceAll("{query}", encodeURIComponent(input.query));
     const ur = new URL(replaced);
-    const json = await fetch(ur.toString(), {
-      headers: { "x-rapidapi-key": apiKey, "x-rapidapi-host": cfg.host },
-    }).then(async (r) => {
-      if (!r.ok) throw new Error(`RAPIDAPI_${input.provider}_SEARCH_FAILED`);
-      return r.json() as Promise<unknown>;
-    });
+    const json = await fetchJsonWithTimeout(ur.toString(), { "x-rapidapi-key": apiKey, "x-rapidapi-host": cfg.host });
     return normalizeRapidApiEcomItems(json, input.provider, input.query);
   }
 
   if (!u.searchParams.has("query") && !u.searchParams.has("q")) u.searchParams.set("query", input.query);
-  const json = await fetch(u.toString(), {
-    headers: { "x-rapidapi-key": apiKey, "x-rapidapi-host": cfg.host },
-  }).then(async (r) => {
-    if (!r.ok) throw new Error(`RAPIDAPI_${input.provider}_SEARCH_FAILED`);
-    return r.json() as Promise<unknown>;
-  });
+  const json = await fetchJsonWithTimeout(u.toString(), { "x-rapidapi-key": apiKey, "x-rapidapi-host": cfg.host });
   return normalizeRapidApiEcomItems(json, input.provider, input.query);
+}
+
+async function rapidApiGetEcommerceDetails(input: { provider: string; id: string }): Promise<NormalizedItem | null> {
+  const apiKey = getRapidApiKey();
+  if (!apiKey) return null;
+  const cfg = getRapidApiProviderConfig(input.provider);
+  if (!cfg.host || !cfg.detailsUrl) return null;
+
+  const rawUrl = cfg.detailsUrl.replaceAll("{id}", encodeURIComponent(input.id));
+  const u = new URL(rawUrl);
+  if (!cfg.detailsUrl.includes("{id}")) {
+    if (!u.searchParams.has("id") && !u.searchParams.has("product_id") && !u.searchParams.has("asin")) {
+      u.searchParams.set("id", input.id);
+    }
+  }
+
+  const json = await fetchJsonWithTimeout(u.toString(), { "x-rapidapi-key": apiKey, "x-rapidapi-host": cfg.host });
+  const obj = (json && typeof json === "object" ? json : null) as Record<string, unknown> | null;
+
+  const name = pickString(obj, ["name", "title", "product_title", "productTitle"]);
+  const url = pickString(obj, ["url", "link", "product_url", "productUrl", "product_link"]);
+  const img = pickString(obj, ["image", "imageUrl", "image_url", "thumbnail", "thumbnail_url"]);
+  const amount =
+    pickNumber(obj, ["final_price", "price", "sale_price", "salePrice", "offer_price", "offerPrice"]) ??
+    pickNumber(pickArray(obj, ["offers"])?.[0], ["price"]);
+  const rating = pickNumber(obj, ["rating", "stars", "average_rating", "avg_rating"]);
+  const reviewsCount = pickNumber(obj, ["reviews", "reviewsCount", "ratings_total", "ratingsTotal", "reviews_total"]);
+
+  if (!name && typeof amount !== "number" && !url) return null;
+
+  return {
+    id: input.id,
+    name: name || "Item details",
+    provider: input.provider,
+    domain: "ecommerce",
+    itemUrl: url || "https://example.com/checkout",
+    imageUrl: img,
+    rating: typeof rating === "number" ? Number(rating.toFixed(1)) : undefined,
+    reviewsCount: typeof reviewsCount === "number" ? Math.round(reviewsCount) : undefined,
+    finalPrice: { currency: "INR", amount: Math.round(typeof amount === "number" ? amount : 999) },
+    raw: json,
+  };
 }
 
 function normalizeRapidApiEcomItems(json: unknown, provider: string, query: string): NormalizedItem[] {
@@ -192,6 +237,11 @@ export class ProductService {
   }
 
   async getDetails(id: string, provider: string): Promise<NormalizedItem | null> {
+    try {
+      const real = await rapidApiGetEcommerceDetails({ provider, id });
+      if (real) return real;
+    } catch {
+    }
     return {
       id,
       name: "Item details",
