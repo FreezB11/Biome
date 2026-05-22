@@ -136,4 +136,11 @@ export class InMemoryOrderRepo {
     this.orders.set(updated.id, updated);
     return updated;
   }
+
+  async listByStatus(status: OrderEntity["status"], limit = 50) {
+    return Array.from(this.orders.values())
+      .filter((o) => o.status === status)
+      .sort((a, b) => a.updatedAt.localeCompare(b.updatedAt))
+      .slice(0, limit);
+  }
 }

@@ -191,6 +191,12 @@ export class MongoOrderRepo implements Pick<InMemoryOrderRepo, "create" | "getBy
     if (!doc) return null;
     return { ...doc, id: doc._id };
   }
+
+  async listByStatus(status: OrderEntity["status"], limit = 50) {
+    const col = await this.col();
+    const docs = await col.find({ status }).sort({ updatedAt: 1 }).limit(limit).toArray();
+    return docs.map((d) => ({ ...d, id: d._id }));
+  }
 }
 
 function cryptoRandomId(prefix: string) {
