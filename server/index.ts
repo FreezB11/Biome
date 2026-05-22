@@ -10,6 +10,7 @@ import authRouter from "./routes/auth";
 import { createRateLimiter } from "./middleware/rateLimit";
 import { attachRequestContext } from "./middleware/requestContext";
 import { createSocketServer } from "./realtime/socket";
+import { startOrderPaymentsSync } from "./services/orderPaymentsSync";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,6 +19,7 @@ async function startServer() {
   const app = express();
   const server = createServer(app);
   createSocketServer(server);
+  startOrderPaymentsSync();
 
   app.use(
     cors({
