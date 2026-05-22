@@ -1,4 +1,5 @@
 import { Router, type Request, type Response } from "express";
+import { z } from "zod";
 import searchRouter from "./search";
 import productsRouter from "./products";
 import aiRouter from "./ai";
@@ -12,6 +13,8 @@ import foodRouter from "./food";
 import ecommerceRouter from "./ecommerce";
 import ridesRouter from "./rides";
 import paymentsRouter from "./payments";
+import { authRequired } from "../middleware/auth";
+import { clickRepo, searchRepo } from "../repositories";
 import { searchEngine } from "../services/searchEngine";
 
 const router = Router();
@@ -29,6 +32,14 @@ router.use("/food", foodRouter);
 router.use("/ecommerce", ecommerceRouter);
 router.use("/rides", ridesRouter);
 router.use("/payments", paymentsRouter);
+
+router.get("/history", authRequired(), async (req: Request, res: Response) => {
+  const limit = z.coerce.number().int().min(1).max(100).optional().safeParse(req.query.limit);
+  const n = limit.success ? limit.data : 30;
+  const userId = req.ctx!.userId!;
+  const [searches, clicks] = await Promise.all([searchRepo.listByUser(userId, n), clickRepo.listByUser(userId, n)]);
+  res.json({ searches, clicks });
+});
 
 router.post("/ecommerce/search", async (req: Request, res: Response) => {
   const query = typeof req.body?.query === "string" ? req.body.query : "";
