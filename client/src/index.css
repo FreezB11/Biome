@@ -415,6 +415,7 @@
   display: flex;
   align-items: center;
   min-height: 52px;
+  justify-content: space-between;
 }
 
 .home-menu-button {
@@ -422,7 +423,20 @@
   height: 42px;
   display: grid;
   place-items: center;
-  color: #7e7b78;
+  color: #1f1c1b;
+  border-radius: 999px;
+}
+
+.home-menu-button-primary {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(59, 45, 36, 0.22);
+  box-shadow: 0 10px 18px rgba(67, 46, 27, 0.1);
+}
+
+.home-header-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .home-content {
@@ -490,11 +504,21 @@
   background: rgba(255, 255, 255, 0.94);
   box-shadow: 0 12px 24px rgba(67, 46, 27, 0.12);
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: auto 1fr auto auto;
   align-items: center;
   gap: 14px;
   padding: 12px 14px 12px 18px;
   color: #2c1d14;
+}
+
+.home-prompt-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  color: #2c1d14;
+  background: rgba(231, 229, 229, 0.8);
 }
 
 .home-prompt-input {
@@ -547,6 +571,111 @@
   color: #30261f;
   font-size: 14px;
   font-weight: 500;
+}
+
+.app-bottom-nav {
+  position: sticky;
+  bottom: 0;
+  width: 100%;
+  padding: 12px clamp(18px, 4vw, 26px) 20px;
+}
+
+.app-bottom-nav-inner {
+  width: min(100%, 520px);
+  margin: 0 auto;
+  min-height: 62px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(59, 45, 36, 0.16);
+  box-shadow: 0 18px 32px rgba(67, 46, 27, 0.12);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  align-items: center;
+  padding: 8px 12px;
+}
+
+.app-bottom-nav-item {
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  color: #5a5551;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.app-bottom-nav-item-active {
+  color: #ef7c0b;
+}
+
+.app-bottom-nav-bubble {
+  width: 44px;
+  height: 44px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+}
+
+.app-bottom-nav-item-active .app-bottom-nav-bubble {
+  background: rgba(239, 124, 11, 0.12);
+}
+
+.app-topbar {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding-top: 10px;
+}
+
+.app-icon-circle {
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(59, 45, 36, 0.18);
+  box-shadow: 0 12px 20px rgba(67, 46, 27, 0.12);
+  color: #1f1c1b;
+}
+
+.app-searchbar {
+  width: 100%;
+  min-height: 48px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(59, 45, 36, 0.16);
+  box-shadow: 0 14px 24px rgba(67, 46, 27, 0.1);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px 8px 16px;
+}
+
+.app-searchbar-input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #2c1d14;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.app-searchbar-input::placeholder {
+  color: rgba(59, 45, 36, 0.45);
+  font-weight: 600;
+}
+
+.app-icon-ghost {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  color: #1f1c1b;
 }
 
 .home-sidebar-overlay {

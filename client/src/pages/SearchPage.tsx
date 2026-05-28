@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, CarFront, History, House, Menu, Pizza } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CarFront, History, House, Menu, Mic, Pizza, Plus, Bell, User } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import apiClient from '@/services/api';
 import type { BackendSearchResult } from '@/types';
@@ -88,7 +88,7 @@ export default function SearchPage() {
   const Sidebar = (
     <aside className="home-sidebar">
       <div>
-        <h3 className="home-sidebar-title">Algorithec</h3>
+        <h3 className="home-sidebar-title">Deepenk</h3>
       </div>
       <nav className="home-sidebar-nav" aria-label="Sidebar navigation">
         <Link
@@ -177,12 +177,22 @@ export default function SearchPage() {
               <header className="home-header">
                 <button
                   aria-label="Open sidebar"
-                  className="home-menu-button"
+                  className="home-menu-button home-menu-button-primary"
                   type="button"
                   onClick={() => setShowSidebar(true)}
                 >
                   <Menu size={26} strokeWidth={2.1} />
                 </button>
+                <div className="home-header-right">
+                  <button
+                    aria-label="Notifications"
+                    className="home-menu-button"
+                    type="button"
+                    onClick={() => setLocation('/history')}
+                  >
+                    <Bell size={24} strokeWidth={2.1} />
+                  </button>
+                </div>
               </header>
 
               <div className="home-content">
@@ -191,17 +201,6 @@ export default function SearchPage() {
                     <span>What do you want to</span>
                     <span className="home-title-accent">choose today?</span>
                   </h2>
-                </div>
-
-                <div className="home-quick-actions">
-                  <button className="home-pill" type="button" onClick={() => setLocation('/rides')}>
-                    <CarFront size={18} strokeWidth={2.1} />
-                    <span>Book a ride</span>
-                  </button>
-                  <button className="home-pill" type="button" onClick={() => setLocation('/food')}>
-                    <Pizza size={18} strokeWidth={2.1} />
-                    <span>Order pizza</span>
-                  </button>
                 </div>
 
                 <form
@@ -213,14 +212,27 @@ export default function SearchPage() {
                   }}
                 >
                   <div className="home-prompt-card">
+                    <button className="home-prompt-icon" type="button" aria-label="Add" onClick={() => inputRef.current?.focus()}>
+                      <Plus size={18} strokeWidth={2.4} />
+                    </button>
                     <textarea
                       className="home-prompt-input"
                       ref={inputRef}
                       onChange={(e) => setPromptText(e.target.value)}
-                      placeholder="Ask Algorithec"
+                      placeholder="Ask Deepenk"
                       rows={1}
                       value={promptText}
                     />
+                    <button
+                      className="home-prompt-icon"
+                      type="button"
+                      aria-label="Voice"
+                      onClick={() => {
+                        inputRef.current?.focus();
+                      }}
+                    >
+                      <Mic size={18} strokeWidth={2.4} />
+                    </button>
                     <button className="home-prompt-send" disabled={!promptText.trim() || isLoading} type="submit">
                       <ArrowRight size={22} strokeWidth={2.5} />
                     </button>
@@ -262,7 +274,32 @@ export default function SearchPage() {
                 )}
               </div>
 
-              <p className="home-footer-note">Engineered by Algorithec</p>
+              <nav className="app-bottom-nav" aria-label="Bottom navigation">
+                <div className="app-bottom-nav-inner">
+                  <Link className={`app-bottom-nav-item ${activePage === 'home' ? 'app-bottom-nav-item-active' : ''}`} href="/home">
+                    <span className="app-bottom-nav-bubble">
+                      <House size={22} strokeWidth={2.2} />
+                    </span>
+                  </Link>
+                  <Link className={`app-bottom-nav-item ${activePage === 'rides' ? 'app-bottom-nav-item-active' : ''}`} href="/rides">
+                    <span className="app-bottom-nav-bubble">
+                      <CarFront size={22} strokeWidth={2.2} />
+                    </span>
+                  </Link>
+                  <Link className={`app-bottom-nav-item ${activePage === 'food' ? 'app-bottom-nav-item-active' : ''}`} href="/food">
+                    <span className="app-bottom-nav-bubble">
+                      <Pizza size={22} strokeWidth={2.2} />
+                    </span>
+                  </Link>
+                  <button className="app-bottom-nav-item" type="button" onClick={() => setLocation('/profile')} aria-label="Profile">
+                    <span className="app-bottom-nav-bubble">
+                      <User size={22} strokeWidth={2.2} />
+                    </span>
+                  </button>
+                </div>
+              </nav>
+
+      <p className="home-footer-note">Engineered by Deepenk</p>
             </div>
 
             {!isDesktop && showSidebar ? (
