@@ -160,18 +160,34 @@ async function ebaySearchEcommerce(input: { query: string }): Promise<Normalized
   const token = await ebayGetAppToken();
   if (!token) return null;
 
-  const u = new URL(`${cfg.baseUrl}/buy/browse/v1/item_summary/search`);
-  u.searchParams.set("q", input.query);
-  u.searchParams.set("limit", "12");
+  const run = async (marketplaceId: string) => {
+    const u = new URL(`${cfg.baseUrl}/buy/browse/v1/item_summary/search`);
+    u.searchParams.set("q", input.query);
+    u.searchParams.set("limit", "12");
+    return await fetchJsonWithTimeout(
+      u.toString(),
+      {
+        Authorization: `Bearer ${token}`,
+        "X-EBAY-C-MARKETPLACE-ID": marketplaceId,
+      },
+      8000
+    );
+  };
 
-  const json = await fetchJsonWithTimeout(
-    u.toString(),
-    {
-      Authorization: `Bearer ${token}`,
-      "X-EBAY-C-MARKETPLACE-ID": cfg.marketplaceId,
-    },
-    8000
-  );
+  let json: unknown;
+  try {
+    json = await run(cfg.marketplaceId);
+  } catch (e) {
+    if (cfg.marketplaceId !== "EBAY_US") {
+      try {
+        json = await run("EBAY_US");
+      } catch {
+        throw e;
+      }
+    } else {
+      throw e;
+    }
+  }
 
   const arr = pickArray(json, ["itemSummaries", "item_summaries", "items"]);
   if (!arr) return [];
