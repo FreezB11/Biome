@@ -224,6 +224,23 @@ export const ridesAPI = {
       throw error;
     }
   },
+
+  getRoute: async (pickup: { lat: number; lng: number }, dropoff: { lat: number; lng: number }) => {
+    try {
+      const response = await apiClient.get('/rides/route', {
+        params: {
+          pickupLat: pickup.lat,
+          pickupLng: pickup.lng,
+          dropoffLat: dropoff.lat,
+          dropoffLng: dropoff.lng,
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Route fetch failed:', error);
+      throw error;
+    }
+  },
 };
 
 /**
