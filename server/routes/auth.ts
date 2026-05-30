@@ -32,6 +32,14 @@ const router = Router();
 const emailSender = createEmailSender();
 const smsSender = createSmsSender();
 
+router.get("/config", (_req: Request, res: Response) => {
+  res.json({
+    google: isGoogleConfigured(),
+    emailOtp: isEmailSenderConfigured(),
+    smsOtp: isSmsSenderConfigured(),
+  });
+});
+
 router.get("/google", (_req: Request, res: Response) => {
   if (!isGoogleConfigured()) {
     res.redirect(`${getFrontendBaseUrl(_req)}/auth?error=google_not_configured`);
