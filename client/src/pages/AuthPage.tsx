@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 
 export default function AuthPage() {
+  const [capabilities, setCapabilities] = useState<{ google: boolean; emailOtp: boolean; smsOtp: boolean } | null>(null);
   const [channel, setChannel] = useState<'email' | 'phone'>('email');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -16,7 +17,24 @@ export default function AuthPage() {
   const [isRequesting, setIsRequesting] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
 
+  const normalizePhone = (value: string) => {
+    const trimmed = value.trim();
+    const cleaned = trimmed.replace(/[^\d+]/g, '');
+    if (!cleaned) return '';
+    return cleaned.startsWith('+') ? cleaned : `+${cleaned}`;
+  };
+
+  const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+  const isValidPhone = (value: string) => {
+    const digits = value.replace(/[^\d]/g, '');
+    return digits.length >= 10 && digits.length <= 15;
+  };
+
   const destination = channel === 'email' ? email : phone;
+  const normalizedDestination =
+    channel === 'email' ? email.trim() : normalizePhone(phone);
+  const canRequest =
+    channel === 'email' ? isValidEmail(email) : isValidPhone(phone);
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -26,9 +44,33 @@ export default function AuthPage() {
     }
   }, []);
 
+  useEffect(() => {
+    let mounted = true;
+    fetch('/auth/config', { credentials: 'include' })
+      .then(async (r) => (await r.json()) as { google: boolean; emailOtp: boolean; smsOtp: boolean })
+      .then((x) => {
+        if (!mounted) return;
+        if (x && typeof x.google === 'boolean') setCapabilities(x);
+      })
+      .catch(() => {
+        return;
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const requestOtp = async () => {
     setStatus(null);
     setDevOtp(null);
+    if (channel === 'email' && !isValidEmail(email)) {
+      setStatus({ type: 'err', message: 'Enter a valid email address' });
+      return;
+    }
+    if (channel === 'phone' && !isValidPhone(phone)) {
+      setStatus({ type: 'err', message: 'Enter a valid phone number (include country code)' });
+      return;
+    }
     setIsRequesting(true);
     try {
       const resp = await fetch('/auth/otp/request', {
@@ -38,7 +80,7 @@ export default function AuthPage() {
         body: JSON.stringify(
           channel === 'email'
             ? { channel, email: email.trim() }
-            : { channel, phone: phone.trim() }
+            : { channel, phone: normalizePhone(phone) }
         ),
       });
       const json = (await resp.json()) as { requestId?: string; devOtp?: string; error?: string };
@@ -163,18 +205,19 @@ export default function AuthPage() {
             <Button
               type="button"
               className="w-full bg-white text-foreground border border-amber-100 hover:bg-amber-50"
+              disabled={capabilities ? !capabilities.google : false}
               onClick={() => {
-                const configured = import.meta.env.VITE_API_URL as string | undefined;
-                const apiOrigin =
-                  typeof configured === 'string' && configured.startsWith('http')
-                    ? new URL(configured).origin
-                    : '';
-                window.location.href = `${apiOrigin}/auth/google`;
+                window.location.href = `/auth/google`;
               }}
             >
               <span className="mr-2">🔵</span>
               Continue with Google
             </Button>
+            {capabilities && !capabilities.google ? (
+              <div className="mt-2 text-xs text-muted-foreground text-center">
+                Google sign-in is not configured on the server yet.
+              </div>
+            ) : null}
           </div>
 
           <div className="relative mb-6">
@@ -244,7 +287,7 @@ export default function AuthPage() {
               <Button
                 type="button"
                 className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold"
-                disabled={!destination.trim() || isRequesting}
+                disabled={!canRequest || isRequesting}
                 onClick={requestOtp}
               >
                 Send code
@@ -255,7 +298,7 @@ export default function AuthPage() {
             {requestId && (
               <div className="space-y-4">
                 <div className="text-xs text-muted-foreground">
-                  Code sent to {channel === 'email' ? email : phone}
+                  Code sent to {normalizedDestination}
                 </div>
 
                 {devOtp && (
@@ -280,7 +323,7 @@ export default function AuthPage() {
                 <Button
                   type="button"
                   className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold"
-                  disabled={otp.trim().length < 4 || isVerifying}
+                  disabled={otp.trim().length !== 6 || isVerifying}
                   onClick={verifyOtp}
                 >
                   Verify & Sign in
