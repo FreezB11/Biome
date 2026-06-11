@@ -249,4 +249,10 @@ export default defineConfig({
       deny: ["**/.*"],
     },
   },
+  test: {
+    globals: true,
+    environment: "node",
+    root: path.resolve(import.meta.dirname),
+    include: ["**/*.test.{ts,tsx}"],
+  },
 });
