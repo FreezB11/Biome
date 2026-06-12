@@ -29,17 +29,14 @@ reconcileLoop cfg db = loop
 
     reconcileOnce = do
       items <- listOpenIntents db 50
-      forM_ items $ \(_intentId, orderId) -> do
-        v <- fetchOrder cfg orderId `catch` (\(_ :: SomeException) -> pure Null)
+      forM_ items $ \(_intentId, oid) -> do
+        v <- fetchOrder cfg oid `catch` (\(_ :: SomeException) -> pure Null)
+        now <- nowIso
         case extractOrderStatus v of
-          Just "PAID" -> set Paid
-          Just "EXPIRED" -> set Cancelled
+          Just "PAID" -> updateIntentStatus db oid Paid now
+          Just "EXPIRED" -> updateIntentStatus db oid Cancelled now
           Just "ACTIVE" -> pure ()
           _ -> pure ()
-        where
-          set st = do
-            now <- nowIso
-            updateIntentStatus db orderId st now
 
 extractOrderStatus :: Value -> Maybe Text
 extractOrderStatus v =

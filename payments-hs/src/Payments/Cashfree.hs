@@ -7,8 +7,6 @@ module Payments.Cashfree
 where
 
 import Data.Aeson (Value, eitherDecode, encode, object, (.=))
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Lazy as LBS
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
