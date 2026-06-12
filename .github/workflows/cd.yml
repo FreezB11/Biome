@@ -1,7 +1,9 @@
 name: CD – Deploy
 
 on:
-  push:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
     inputs:
@@ -18,27 +20,12 @@ concurrency:
 
 jobs:
   # ────────────────────────────────────────────────────────────────
-  # Gate: CI must pass before deploy is allowed
-  # ────────────────────────────────────────────────────────────────
-  wait-for-ci:
-    name: Wait for CI
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check CI status
-        uses: lewagon/wait-on-check-action@v1.3.4
-        with:
-          ref: ${{ github.sha }}
-          check-name: "Node.js – Type-check / Test / Build (22.x)"
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 20
-
-  # ────────────────────────────────────────────────────────────────
   # Build production artefacts
   # ────────────────────────────────────────────────────────────────
   build:
     name: Production Build
-    needs: wait-for-ci
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     outputs:
       image-tag: ${{ steps.meta.outputs.version }}
 
