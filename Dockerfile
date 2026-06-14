@@ -15,6 +15,9 @@ RUN pnpm install --offline --frozen-lockfile
 # Build Vite frontend + esbuild server bundle
 RUN pnpm build
 
+# Prune to production-only deps so the runtime stage stays lean
+RUN pnpm prune --prod
+
 # ── Runtime stage ───────────────────────────────────────────────────────────────
 FROM node:22-alpine AS runtime
 
@@ -22,7 +25,7 @@ RUN addgroup -S biome && adduser -S biome -G biome
 
 WORKDIR /app
 
-# Only copy the compiled output (no source, no dev deps)
+# Only copy compiled output and production node_modules (no dev deps, no source)
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./

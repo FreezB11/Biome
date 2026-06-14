@@ -124,12 +124,21 @@ jobs:
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose pull
 
-            # Rolling restart (zero-downtime via healthcheck)
+            # Record previous image tag for rollback
+            PREV_TAG=$(docker inspect --format='{{index .RepoTags 0}}' biome-server 2>/dev/null || echo "")
+
+            # Restart containers with new images
             docker compose up -d --remove-orphans
 
-            # Wait for health
+            # Wait for health; roll back to previous tag on failure
             sleep 10
-            curl --fail http://localhost:3000/api/health || exit 1
+            if ! curl --fail http://localhost:3000/api/health; then
+              echo "Health check failed — rolling back to ${PREV_TAG}"
+              if [ -n "$PREV_TAG" ]; then
+                IMAGE_TAG="$PREV_TAG" docker compose up -d
+              fi
+              exit 1
+            fi
 
       - name: Run smoke tests against staging
         run: |
@@ -167,12 +176,21 @@ jobs:
             # Pull new images
             docker compose pull
 
-            # Blue/green swap: bring new containers up before stopping old
+            # Record previous image tag for rollback
+            PREV_TAG=$(docker inspect --format='{{index .RepoTags 0}}' biome-server 2>/dev/null || echo "")
+
+            # Restart containers with new images
             docker compose up -d --remove-orphans
 
-            # Verify
+            # Verify health; roll back to previous image on failure
             sleep 15
-            curl --fail http://localhost:3000/api/health || (docker compose rollback && exit 1)
+            if ! curl --fail http://localhost:3000/api/health; then
+              echo "Health check failed — rolling back to ${PREV_TAG}"
+              if [ -n "$PREV_TAG" ]; then
+                IMAGE_TAG="$PREV_TAG" docker compose up -d
+              fi
+              exit 1
+            fi
 
       - name: Notify deployment
         if: always()
