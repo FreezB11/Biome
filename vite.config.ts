@@ -266,5 +266,17 @@ export default defineConfig({
     environment: "node",
     root: path.resolve(import.meta.dirname),
     include: ["**/*.test.{ts,tsx}"],
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "json", "html", "lcov"],
+      reportsDirectory: "./coverage",
+      include: ["server/**/*.ts"],
+      exclude: [
+        "server/**/*.test.ts",
+        "server/index.ts", // entrypoint, tested via smoke test
+        "node_modules/**",
+        "dist/**",
+      ],
+    },
   },
 });
